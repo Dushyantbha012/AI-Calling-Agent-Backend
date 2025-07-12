@@ -79,7 +79,7 @@ Create a `.env` file based on `.env.example`:
 ```bash
 # Server Configuration
 SERVER=your-domain.com
-PORT=3000
+PORT=8080
 
 # Twilio (Required for phone functionality)
 TWILIO_ACCOUNT_SID=your_account_sid

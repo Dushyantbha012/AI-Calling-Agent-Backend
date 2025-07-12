@@ -27,7 +27,7 @@ ENV PYTHONPATH=/app
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:3000/docs || exit 1
+    CMD curl -f http://localhost:8080/docs || exit 1
 
 # Start the FastAPI application
 CMD ["uvicorn", "app:app", "--host", "0.0.0.0", "--port", "8080"]
