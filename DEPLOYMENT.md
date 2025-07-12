@@ -22,7 +22,7 @@ python app.py
 ```bash
 # Build and run
 docker build -t ai-call-backend .
-docker run -p 3000:3000 --env-file .env ai-call-backend
+docker run -p 8080:8080 --env-file .env ai-call-backend
 
 # Or with Docker Compose
 docker-compose up -d
@@ -53,5 +53,5 @@ docker-compose up -d
 ## 🔍 Health Check
 
 ```bash
-curl http://localhost:3000/docs
+curl http://localhost:8080/health
 ```

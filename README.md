@@ -50,19 +50,19 @@ This backend service provides:
    ```bash
    python app.py
    # Or using uvicorn directly:
-   uvicorn app:app --host 0.0.0.0 --port 3000 --reload
+   uvicorn app:app --host 0.0.0.0 --port 8080 --reload
    ```
 
 5. **Access the API:**
-   - API Documentation: http://localhost:3000/docs
-   - Health Check: http://localhost:3000/docs
+   - API Documentation: http://localhost:8080/docs
+   - Health Check: http://localhost:8080/health
 
 ### Docker Deployment
 
 1. **Build and run:**
    ```bash
    docker build -t ai-call-backend .
-   docker run -p 3000:3000 --env-file .env ai-call-backend
+   docker run -p 8080:8080 --env-file .env ai-call-backend
    ```
 
 2. **Using Docker Compose:**

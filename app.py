@@ -36,6 +36,18 @@ global call_contexts
 call_contexts = {}
 
 
+@app.get("/")
+async def root():
+    """Root health check endpoint for Cloud Run."""
+    return {"status": "healthy", "message": "AI Call Backend is running"}
+
+
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for Cloud Run startup and liveness probes."""
+    return {"status": "healthy", "timestamp": "2025-07-12"}
+
+
 @app.post("/incoming")
 async def incoming_call() -> HTMLResponse:
     """
