@@ -20,7 +20,7 @@ google-auth-httplib2==0.1.1
 google-auth-oauthlib==1.1.0
 
 # Event Handling
-event-emitter==0.9.0
+pyee==9.0.4
 
 # Logging
 colorlog==6.8.0
