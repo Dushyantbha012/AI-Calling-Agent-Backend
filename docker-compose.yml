@@ -1,0 +1,84 @@
+version: '3.8'
+
+services:
+  ai-call-backend:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      # Server Configuration
+      - SERVER=${SERVER}
+      - PORT=3000
+      
+      # Twilio
+      - TWILIO_ACCOUNT_SID=${TWILIO_ACCOUNT_SID}
+      - TWILIO_AUTH_TOKEN=${TWILIO_AUTH_TOKEN}
+      - TWILIO_PHONE_NUMBER=${TWILIO_PHONE_NUMBER}
+      - OWNER_PHONE_NUMBER=${OWNER_PHONE_NUMBER}
+      - TWILIO_WHATSAPP_NUMBER=${TWILIO_WHATSAPP_NUMBER}
+      
+      # AI Services
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - DEEPGRAM_API_KEY=${DEEPGRAM_API_KEY}
+      - ELEVENLABS_API_KEY=${ELEVENLABS_API_KEY}
+      - ELEVENLABS_MODEL_ID=${ELEVENLABS_MODEL_ID}
+      - ELEVENLABS_VOICE_ID=${ELEVENLABS_VOICE_ID}
+      
+      # Google Services
+      - GOOGLE_API_KEY=${GOOGLE_API_KEY}
+      - GOOGLE_SEARCH_ENGINE_ID=${GOOGLE_SEARCH_ENGINE_ID}
+      
+      # Service Selection
+      - TTS_SERVICE=${TTS_SERVICE}
+      - LLM_SERVICE=${LLM_SERVICE}
+      
+      # Phone Configuration
+      - APP_NUMBER=${APP_NUMBER}
+      - YOUR_NUMBER=${YOUR_NUMBER}
+      - TRANSFER_NUMBER=${TRANSFER_NUMBER}
+      
+      # AI Configuration
+      - SYSTEM_MESSAGE=${SYSTEM_MESSAGE}
+      - INITIAL_MESSAGE=${INITIAL_MESSAGE}
+      - RECORD_CALLS=${RECORD_CALLS}
+      
+      # Owner Features
+      - ENABLE_OWNER_FEATURES=${ENABLE_OWNER_FEATURES}
+      - OWNER_EMAIL=${OWNER_EMAIL}
+      - GMAIL_SENDER_NAME=${GMAIL_SENDER_NAME}
+      
+      # Email Configuration
+      - SENDER_EMAIL=${SENDER_EMAIL}
+      - SENDER_PASSWORD=${SENDER_PASSWORD}
+      - SMTP_SERVER=${SMTP_SERVER}
+      - SMTP_PORT=${SMTP_PORT}
+      
+      # Qdrant Configuration
+      - QDRANT_HOST=${QDRANT_HOST}
+      - QDRANT_PORT=${QDRANT_PORT}
+      - QDRANT_API_KEY=${QDRANT_API_KEY}
+      - QDRANT_COLLECTION_NAME=${QDRANT_COLLECTION_NAME}
+      - QDRANT_VECTOR_SIZE=${QDRANT_VECTOR_SIZE}
+      
+      # RAG Configuration
+      - RAG_ENABLED=${RAG_ENABLED}
+      - RAG_MAX_CONTEXT_CHUNKS=${RAG_MAX_CONTEXT_CHUNKS}
+      - RAG_SIMILARITY_THRESHOLD=${RAG_SIMILARITY_THRESHOLD}
+      - RAG_CHUNK_SIZE=${RAG_CHUNK_SIZE}
+      - RAG_CHUNK_OVERLAP=${RAG_CHUNK_OVERLAP}
+      
+      # System Configuration
+      - TOKENIZERS_PARALLELISM=${TOKENIZERS_PARALLELISM}
+      
+    volumes:
+      - ./functions/credentials.json:/app/functions/credentials.json:ro
+      - ./functions/token.json:/app/functions/token.json:ro
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/docs"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
