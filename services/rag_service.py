@@ -3,15 +3,13 @@ import os
 import uuid
 from datetime import datetime
 from typing import List, Dict, Any, Optional
+from sentence_transformers import SentenceTransformer
 from qdrant_client import AsyncQdrantClient
 from qdrant_client.models import (
     Distance, VectorParams, PointStruct, Filter, 
     FieldCondition, MatchValue, ScoredPoint
 )
 import json
-
-# Set tokenizers parallelism to avoid fork warnings
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
 from logger_config import get_logger
 
@@ -27,7 +25,6 @@ class RAGService:
     def __init__(self):
         self.client = None
         self.embedder = None
-        self._embedder_lock = asyncio.Lock()
         self.collection_name = os.getenv("QDRANT_COLLECTION_NAME", "phone_conversations")
         self.vector_size = int(os.getenv("QDRANT_VECTOR_SIZE", "384"))
         self.max_context_chunks = int(os.getenv("RAG_MAX_CONTEXT_CHUNKS", "5"))
@@ -57,8 +54,10 @@ class RAGService:
             else:
                 self.client = AsyncQdrantClient(host=qdrant_host, port=qdrant_port)
             
-            # Initialize sentence transformer for embeddings lazily
-            await self._initialize_embedder()
+            # Initialize sentence transformer for embeddings
+            # Using a smaller, faster model for real-time performance
+            self.embedder = SentenceTransformer('all-MiniLM-L6-v2')
+            self.vector_size = self.embedder.get_sentence_embedding_dimension()
             
             # Ensure collection exists
             await self._ensure_collection_exists()
@@ -68,29 +67,6 @@ class RAGService:
         except Exception as e:
             logger.error(f"Failed to initialize RAG service: {e}")
             self.rag_enabled = False
-    
-    async def _initialize_embedder(self):
-        """Initialize the sentence transformer embedder lazily"""
-        if self.embedder is None:
-            try:
-                # Import here to avoid fork issues
-                from sentence_transformers import SentenceTransformer
-                
-                # Using a smaller, faster model for real-time performance
-                # Initialize in a way that avoids fork issues
-                logger.info("Initializing sentence transformer...")
-                self.embedder = SentenceTransformer('all-MiniLM-L6-v2')
-                self.vector_size = self.embedder.get_sentence_embedding_dimension()
-                logger.info(f"Sentence transformer initialized with vector size: {self.vector_size}")
-            except Exception as e:
-                logger.error(f"Failed to initialize sentence transformer: {e}")
-                raise
-    
-    async def _get_embedder(self):
-        """Get the embedder, initializing it if necessary"""
-        if self.embedder is None:
-            await self._initialize_embedder()
-        return self.embedder
     
     async def _ensure_collection_exists(self):
         """Ensure the Qdrant collection exists with proper configuration"""
@@ -159,9 +135,6 @@ class RAGService:
             return
             
         try:
-            # Get embedder (initialize if needed)
-            embedder = await self._get_embedder()
-            
             # Create conversation text
             conversation_text = f"User: {user_message}\nAssistant: {assistant_message}"
             
@@ -171,7 +144,7 @@ class RAGService:
             # Generate embeddings and store each chunk
             points = []
             for i, chunk in enumerate(chunks):
-                embedding = embedder.encode(chunk).tolist()
+                embedding = self.embedder.encode(chunk).tolist()
                 
                 point_metadata = {
                     "phone_number": phone_number,
@@ -217,11 +190,8 @@ class RAGService:
             return []
             
         try:
-            # Get embedder (initialize if needed)
-            embedder = await self._get_embedder()
-            
             # Generate embedding for the current query
-            query_embedding = embedder.encode(current_query).tolist()
+            query_embedding = self.embedder.encode(current_query).tolist()
             
             # Create filter for the specific phone number
             filter_conditions = [
@@ -348,11 +318,8 @@ class RAGService:
             return
             
         try:
-            # Get embedder (initialize if needed)
-            embedder = await self._get_embedder()
-            
             # Create a metadata point
-            embedding = embedder.encode(f"Call metadata for {phone_number}").tolist()
+            embedding = self.embedder.encode(f"Call metadata for {phone_number}").tolist()
             
             point_metadata = {
                 "phone_number": phone_number,

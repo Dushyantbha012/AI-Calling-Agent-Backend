@@ -189,7 +189,7 @@ class OpenAIService(AbstractLLMService):
     async def completion(self, text: str, interaction_count: int, role: str = 'user', name: str = 'user'):
         try:
             # Check for recursive function calls to prevent loops
-            if role == 'function' and name in ['send_whatsapp_info', 'send_whatsapp_summary', 'send_email_info', 'send_email_summary']:
+            if role == 'function' and name in ['send_whatsapp_info', 'send_whatsapp_summary']:
                 # If we're getting a response from these functions, don't immediately 
                 # send it back to OpenAI as it tends to trigger the same function again
                 self.user_context.append({"role": role, "content": text, "name": name})
@@ -369,25 +369,6 @@ class GroqService(AbstractLLMService):
 
     async def completion(self, text: str, interaction_count: int, role: str = 'user', name: str = 'user'):
         try:
-            # Check for recursive function calls to prevent loops
-            if role == 'function' and name in ['send_whatsapp_info', 'send_whatsapp_summary', 'send_email_info', 'send_email_summary']:
-                # If we're getting a response from these functions, don't immediately 
-                # send it back to Groq as it tends to trigger the same function again
-                self.user_context.append({"role": role, "content": text, "name": name})
-                
-                # Add a synthetic assistant response to prevent the loop
-                synthetic_response = "I've processed your request. Is there anything else you'd like to know?"
-                self.user_context.append({"role": "assistant", "content": synthetic_response})
-                
-                # Send the synthetic response to TTS
-                await self.emit('llmreply', {
-                    "partialResponseIndex": self.partial_response_index,
-                    "partialResponse": synthetic_response
-                }, interaction_count)
-                self.partial_response_index += 1
-                
-                return
-            
             self.user_context.append({"role": role, "content": text, "name": name})
             
             # Get RAG context for user messages
@@ -438,45 +419,7 @@ class GroqService(AbstractLLMService):
                 if chunk.choices[0].finish_reason == "tool_calls":
                     logger.info(f"Function call detected: {function_name}")
                     function_to_call = self.available_functions[function_name]
-                    
-                    # Improved function argument handling
-                    try:
-                        parsed_args = self.validate_function_args(function_args)
-                        logger.info(f"Function arguments for {function_name}: {parsed_args}")
-                        
-                        # Enhanced validation for email and WhatsApp info functions
-                        if function_name in ["send_email_info", "send_whatsapp_info"] and ("query" not in parsed_args or not parsed_args.get("query", "").strip()):
-                            # Extract potential query from recent user context
-                            recent_user_msg = ""
-                            for msg in reversed(self.user_context[-5:]):
-                                if msg['role'] == 'user':
-                                    recent_user_msg = msg['content']
-                                    break
-                                    
-                            # Try to extract a topic from the recent message using multiple patterns
-                            potential_query = self.extract_query_from_message(recent_user_msg)
-                            
-                            if potential_query:
-                                parsed_args["query"] = potential_query
-                                logger.info(f"Added missing query parameter: {potential_query}")
-                            else:
-                                # Skip function call if we still can't determine the query
-                                logger.warning(f"Skipping {function_name} call due to missing or empty query parameter")
-                                await self.emit('llmreply', {
-                                    "partialResponseIndex": None,
-                                    "partialResponse": "I'm not sure what information you'd like me to send. Could you please tell me specifically what you want to know about?"
-                                }, interaction_count)
-                                continue
-                                
-                        # Handle email address extraction for email functions
-                        if function_name in ["send_email_info", "send_email_summary"] and not parsed_args.get("to_email"):
-                            if hasattr(self.context, 'user_email') and self.context.user_email:
-                                parsed_args["to_email"] = self.context.user_email
-                                logger.info(f"Added stored user email: {self.context.user_email}")
-                                
-                    except Exception as e:
-                        logger.error(f"Error parsing function arguments: {str(e)}. Raw args: {function_args}")
-                        parsed_args = {}
+                    function_args = self.validate_function_args(function_args)
 
                     tool_data = next((tool for tool in tools if tool['function']['name'] == function_name), None)
                     say = tool_data['function']['say']
@@ -486,45 +429,12 @@ class GroqService(AbstractLLMService):
                         "partialResponse": say
                     }, interaction_count)
 
-                    # Emit initial function progress
-                    await self.emit_function_progress(
-                        f"Starting {function_name.replace('_', ' ')}...",
-                        'started',
-                        interaction_count
-                    )
-
-                    self.user_context.append({"role": "assistant", "content": say})
-                    
-                    function_response = await function_to_call(self.context, parsed_args)
-                    
-                    # Emit completion function progress
-                    await self.emit_function_progress(
-                        function_response,
-                        'completed',
-                        interaction_count
-                    )
+                    function_response = await function_to_call(self.context, function_args)
                                         
-                    logger.info(f"Function {function_name} called with args: {parsed_args}")
+                    logger.info(f"Function {function_name} called with args: {function_args}")
 
                     if function_name != "end_call":
-                        # For WhatsApp and email functions, we prevent the recursive call by handling differently
-                        if function_name in ['send_whatsapp_info', 'send_whatsapp_summary', 'send_email_info', 'send_email_summary']:
-                            # Store response but don't trigger another completion
-                            self.user_context.append({"role": "function", "name": function_name, "content": function_response})
-                            
-                            # Add a synthetic assistant response to prevent the loop
-                            synthetic_response = "Is there anything else you'd like to know?"
-                            self.user_context.append({"role": "assistant", "content": synthetic_response})
-                            
-                            # Send the synthetic response to TTS
-                            await self.emit('llmreply', {
-                                "partialResponseIndex": self.partial_response_index,
-                                "partialResponse": synthetic_response
-                            }, interaction_count)
-                            self.partial_response_index += 1
-                        else:
-                            # Normal recursive call for other functions
-                            await self.completion(function_response, interaction_count, 'function', function_name)
+                        await self.completion(function_response, interaction_count, 'function', function_name)
 
             if self.sentence_buffer.strip():
                 await self.emit('llmreply', {

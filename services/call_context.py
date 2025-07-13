@@ -28,6 +28,4 @@ class CallContext:
         self.collected_data: Dict[str, Any] = {}
         # Store the user's phone number for future reference
         self.user_phone_number: Optional[str] = None
-        # Store the user's email for sending information
-        self.user_email: Optional[str] = None
 

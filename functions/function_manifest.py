@@ -116,61 +116,6 @@ tools = [
             },
             "say": "I'll send that information to your WhatsApp right away. You should receive it shortly."
         }
-    },
-    
-    {
-        "type": "function",
-        "function": {
-            "name": "send_email_summary",
-            "description": "Send a summary of the conversation to the user's email address. Use this when the user explicitly asks for an email summary of the call or wants the conversation details sent via email.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "to_email": {
-                        "type": "string",
-                        "description": "The email address to send the summary to"
-                    },
-                    "include_transcript": {
-                        "type": "boolean",
-                        "description": "Whether to include the full conversation transcript in the email",
-                        "default": False
-                    }
-                },
-                "required": []
-            },
-            "say": "I'll send a summary of our conversation to your email. You should receive it shortly."
-        }
-    },
-    
-    {
-        "type": "function",
-        "function": {
-            "name": "send_email_info",
-            "description": "Send specific information to the user's email address. Use this function ONLY when a user EXPLICITLY asks for information to be sent to their email AND you know exactly what topic they want information about. Never call this function with an empty query parameter.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "query": {
-                        "type": "string",
-                        "description": "The SPECIFIC information topic the user wants sent (e.g., 'Hyderabad', 'python programming', 'healthy recipes'). This must be extracted from user's request and CANNOT be empty."
-                    },
-                    "info_type": {
-                        "type": "string",
-                        "description": "General category of information"
-                    },
-                    "to_email": {
-                        "type": "string",
-                        "description": "The email address to send the information to"
-                    },
-                    "custom_text": {
-                        "type": "string",
-                        "description": "Custom text to send instead of generating content"
-                    }
-                },
-                "required": ["query"]
-            },
-            "say": "I'll send that information to your email right away. You should receive it shortly."
-        }
     }
 ]
 

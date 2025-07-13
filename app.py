@@ -5,12 +5,10 @@ import os
 from collections import deque
 from typing import Dict
 
-# Set tokenizers parallelism to avoid fork warnings with sentence-transformers
-os.environ["TOKENIZERS_PARALLELISM"] = "false"
-
 import dotenv
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.middleware.cors import CORSMiddleware
 from twilio.rest import Client
 from twilio.twiml.voice_response import Connect, VoiceResponse
 
@@ -28,7 +26,21 @@ import certifi
 ssl_context = ssl.create_default_context(cafile=certifi.where())"""
 
 dotenv.load_dotenv()
-app = FastAPI()
+app = FastAPI(
+    title="AI Call Management System Backend",
+    description="Backend API for AI-powered call management with Twilio integration",
+    version="1.0.0"
+)
+
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Configure this for production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 logger = get_logger("App")
 
 # Global dictionary to store call contexts for each server instance (should be replaced with a database in production)
@@ -36,16 +48,24 @@ global call_contexts
 call_contexts = {}
 
 
-@app.get("/")
-async def root():
-    """Root health check endpoint for Cloud Run."""
-    return {"status": "healthy", "message": "AI Call Backend is running"}
-
-
 @app.get("/health")
 async def health_check():
-    """Health check endpoint for Cloud Run startup and liveness probes."""
-    return {"status": "healthy", "timestamp": "2025-07-12"}
+    """Health check endpoint for monitoring"""
+    return JSONResponse(content={
+        "status": "healthy",
+        "service": "ai-call-backend",
+        "version": "1.0.0"
+    })
+
+
+@app.get("/")
+async def root():
+    """Root endpoint with API information"""
+    return JSONResponse(content={
+        "message": "AI Call Management System Backend",
+        "docs": "/docs",
+        "health": "/health"
+    })
 
 
 @app.post("/incoming")
@@ -296,14 +316,14 @@ def get_twilio_client():
     """Retrieves a Twilio client using credentials from environment variables."""
     return Client(os.getenv("TWILIO_ACCOUNT_SID"), os.getenv("TWILIO_AUTH_TOKEN"))
 
+# API route to initiate a call via UI
 @app.post("/start_call")
 async def start_call(request: Dict[str, str]):
     """Initiate a call using Twilio with optional system and initial messages."""
     to_number = request.get("to_number")
-    user_email = request.get("user_email")
     system_message = request.get("system_message")
     initial_message = request.get("initial_message")
-    logger.info(f"Initiating call to {to_number} with email: {user_email}")
+    logger.info(f"Initiating call to {to_number}")
 
     service_url = f"https://{os.getenv('SERVER')}/incoming"
 
@@ -327,11 +347,6 @@ async def start_call(request: Dict[str, str]):
         call_context.system_message = system_message or os.getenv("SYSTEM_MESSAGE")
         call_context.initial_message = initial_message or os.getenv("Config.INITIAL_MESSAGE")
         call_context.call_sid = call_sid
-        
-        # Store user email if provided
-        if user_email:
-            call_context.user_email = user_email
-            logger.info(f"Stored user email for call {call_sid}: {user_email}")
 
         return {"call_sid": call_sid}
     except Exception as e:
